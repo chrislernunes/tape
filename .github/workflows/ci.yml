@@ -1,0 +1,72 @@
+name: CI
+
+# Runs the full test suite in both Debug (with ASan+UBSan) and Release on
+# every push and PR. Pinned to an exact Ubuntu version (not `ubuntu-latest`,
+# which floats) so this workflow's environment doesn't silently drift out
+# from under the methodology documented in docs/PHASE1_SUMMARY.md.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.build_type }} build + test suite
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build g++-13 libssl-dev
+        # libssl-dev is optional for the project itself (hydra_live simply
+        # isn't built without it — see CMakeLists.txt) but installed here so
+        # CI actually exercises that target too, not just the offline path.
+
+      - name: Configure (${{ matrix.build_type }})
+        run: >
+          cmake -S . -B build
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DHYDRA_BUILD_TESTS=ON
+          -DCMAKE_CXX_COMPILER=g++-13
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Run test suite
+        # --output-on-failure surfaces the failing TEST_CASE/SECTION's own
+        # Catch2 output in the CI log directly; ASAN_OPTIONS only affects
+        # the Debug leg (the Release binary isn't sanitizer-instrumented).
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Determinism smoke check (same seed, two full runs, diff stdout)
+        # Belt-and-braces on top of the unit-level determinism tests in
+        # tests/test_determinism.cpp: actually runs the shipped `hydra --sim`
+        # binary twice end-to-end (default hardcoded seed = 12345) and
+        # confirms identical behavior. Only run once (Release leg) since it
+        # exercises the same binary logic regardless of build type.
+        #
+        # Wall time / speedup / throughput lines are excluded before
+        # diffing: they measure real elapsed time, which legitimately
+        # varies run to run, and were never part of the "same seed -> same
+        # result" claim (verified: a raw, unfiltered diff of two real runs
+        # on this project's own dev machine differed ONLY in those three
+        # lines; every fill, trade, and book-state number matched exactly).
+        if: matrix.build_type == 'Release'
+        run: |
+          ./build/hydra --sim > /tmp/run1.txt
+          ./build/hydra --sim > /tmp/run2.txt
+          grep -vE "Wall time:|Speedup:|Throughput:" /tmp/run1.txt > /tmp/run1_stable.txt
+          grep -vE "Wall time:|Speedup:|Throughput:" /tmp/run2.txt > /tmp/run2_stable.txt
+          diff /tmp/run1_stable.txt /tmp/run2_stable.txt \
+            && echo "Deterministic: behavior-relevant output is byte-identical across two independent --sim runs"

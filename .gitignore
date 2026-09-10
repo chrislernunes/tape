@@ -1,0 +1,35 @@
+# Build directories
+build/
+build-debug/
+build-clang-sanitize/
+cmake-build-*/
+
+# Compiled binaries / objects
+*.exe
+*.dll
+*.o
+*.obj
+*.a
+*.lib
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+.ninja_deps
+.ninja_log
+build.ninja
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.dbbuild/
+build-debug/
+build-release/
+build-sanitize/
+build/
