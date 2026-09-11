@@ -1,0 +1,16 @@
+# Build directories (any CMake build tree name)
+build/
+build-*/
+cmake-build-*/
+
+# Compiled objects / binaries
+*.o
+*.obj
+*.exe
+*.out
+
+# Editor / OS artifacts
+.vscode/
+.idea/
+*.swp
+.DS_Store
