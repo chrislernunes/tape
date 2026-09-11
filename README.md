@@ -1,8 +1,8 @@
 # Tape
 
-Deterministic C++20 exchange simulator. Matching engine, LOB, agent sim, microstructure metrics. Optional live Binance feed (OpenSSL).
+Deterministic C++20 matching engine and LOB simulator. Optional live Binance feed (OpenSSL). Not a live exchange.
 
-Phase 1 locked matching + agent accounting. Phase 2 split the tree into `tape_core` + binaries. Models and benches are documented under `docs/`.
+v2.0.0. Engine is non-reentrant. Nested agent orders queue until the active `handle_*` returns.
 
 ## Build
 
@@ -29,7 +29,7 @@ cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
 ```
 
-80 cases. CI: Debug+ASan+UBSan and Release.
+86 cases. CI: Debug+ASan+UBSan and Release.
 
 ## Layout
 
